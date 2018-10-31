@@ -14,8 +14,15 @@ mkdir $Path\$ModuleName\Public
 mkdir $Path\$ModuleName\en-US # For about_Help files
 mkdir $Path\Tests
 
-$tmp
 
 
+}
+
+function New-GitRepo(){
+    param(
+        [Parameter(mandatory=$true)][string]$token,
+        [Parameter(mandatory=$true)][string]$name,
+    )
+ curl https://api.github.com/user/repos?access_token=$token -d '{"name":"$name"}'
 
 }
