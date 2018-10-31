@@ -14,6 +14,8 @@ mkdir $Path\$ModuleName\Public
 mkdir $Path\$ModuleName\en-US # For about_Help files
 mkdir $Path\Tests
 
+$tmp
+
 
 
 }
