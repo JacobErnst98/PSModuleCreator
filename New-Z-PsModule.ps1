@@ -35,3 +35,20 @@ function Get-functions(){
     $newarray= Get-ChildItem function:\
     return ($newarray | where {$oldarray -notcontains $_}).name
 }
+
+
+function New-GitToken() {
+ [Parameter(mandatory=$true)][string]$user
+  [Parameter(mandatory=$true)][string]$pass
+
+$pair = "${user}:${pass}"
+$bytes = [System.Text.Encoding]::ASCII.GetBytes($pair)
+$base64 = [System.Convert]::ToBase64String($bytes)
+$basicAuthValue = "Basic $base64"
+$headers = @{ Authorization = $basicAuthValue}
+$postparams = @{scopes = "repo";note = "ZPSMODULE" }
+Invoke-WebRequest -uri "https://api.github.com/authorizations" -Headers $headers -Method POST -body $postparams
+
+#curl -u '$username'  -d '{"scopes":["repo"],"note":"ZPSMODULE"}' https://api.github.com/authorizations
+#Curl -u does not exsist in powershell we will have to find a way to do this with invoke-webrequest
+}
