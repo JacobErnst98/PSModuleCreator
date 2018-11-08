@@ -1,6 +1,6 @@
-﻿#builds a PS Module
-#requires PSGit
-#requires PSTools
+﻿# builds a PS Module
+# requires PSGit
+# requires PSTools
 
 function ConvertTo-PSModule(){
     param(
@@ -19,14 +19,16 @@ function ConvertTo-PSModule(){
 		#Write-Host "Test remote"
 		    if (test-GitRemote -ProjectPath $ProjectPath) {
                 $RepoData=get-gitrepo -ProjectPath $ProjectPath
-
                 $ModuleName=$RepoData.name
-                
-
-
                 $authors=($RepoData.contributors_stats |Format-Table -autosize |Out-String)
+                
+                $requiredModules =@()
 
-
+                $FoundModules = get-PSTool_usedCommands $source
+                $Confirmation=[System.Windows.MessageBox]::Show("Please select modules used in your script from the following lists.`nThe first list will be suspected valid modules.`nThe second list will be suspected false positives",'Select Modules','ok','Information')
+                $SelectedModules = $FoundModules.GoodCommands |Out-GridView -Title "Select Modules: Suspected Good" -passthru
+                $SelectedModules += $FoundModules.MehCommands |Out-GridView -Title "Select Modules: Suspected False Positives" -passthru
+                $selectedModules.module |sort|Get-Unique
 
 
 <# 
@@ -41,15 +43,18 @@ function ConvertTo-PSModule(){
 
 # HelpInfo URI of this module
 # HelpInfoURI = '
+
+# Copyright statement for this moduleCopyright = '(c) 2012 User01. All rights reserved.'
+
+# Minimum version of the PowerShell engine required by this module
+# PowerShellVersion = ''
+
+# Company or vendor of this moduleCompanyName = 'Unknown'
 #>
 
 
 # ID used to uniquely identify this moduleGUID = 'd0a9150d-b6a4-4b17-a325-e3a24fed0aa9'
-# Company or vendor of this moduleCompanyName = 'Unknown'
-# Copyright statement for this moduleCopyright = '(c) 2012 User01. All rights reserved.'
-# Minimum version of the PowerShell engine required by this module
 
-# PowerShellVersion = ''
 # Name of the PowerShell host required by this module
 # PowerShellHostName = ''
 # Minimum version of the PowerShell host required by this module
@@ -88,8 +93,10 @@ function ConvertTo-PSModule(){
 # Aliases to export from this moduleAliasesToExport = '*'
 
 # List of all modules packaged with this module# ModuleList = @()
+
 # List of all files packaged with this module
 # FileList = @()
+
 # Private data to pass to the module specified in RootModule/ModuleToProcess
 # PrivateData = ''
 
@@ -102,9 +109,12 @@ function ConvertTo-PSModule(){
 
 
 
+                $UpdateDate=$($RepoData.updated_at).split("T")[0].split("-")
+                $UpdateTime=$($RepoData.updated_at).split("T")[1].split(":")
+                $ModuleVersion="$($UpdateDate[0])$($UpdateDate[1]).$($UpdateDate[2]).$($UpdateTime[0])$($UpdateTime[1]).$($UpdateTime[2].split(`"Z`")[0])"
 
                 #make directory for module
-                <#
+                #
                 New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module"
                 New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)"
                 New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\Private"
@@ -116,12 +126,13 @@ function ConvertTo-PSModule(){
                                    -RootModule $ModuleName.psm1 `
                                    -Description $RepoData.Description `
                                    -Author $authors `
-                                   -Version $RepoData.updated_at `
+                                   -ModuleVersion $ModuleVersion `
                                    -HelpInfoURI $RepoData.html_url `
-
-                                   -PowerShellVersion 3.0 `
-                                   -FormatsToProcess "$ModuleName.Format.ps1xml"
-               #>
+                                   -PowerShellVersion "$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)" `
+                                   -Copyright "(c) $($UpdateDate[0]) $($RepoData.owner.login). All rights reserved." `
+                                   -companyName "$($RepoData.owner.login)" `
+                                   -FormatsToProcess "$($ModuleName).Format.ps1xml"
+               #
              }
         }                      
     }
