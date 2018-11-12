@@ -6,103 +6,103 @@
 # $source="\\dutchess\support\Power Shell Scripts\Other\PSGit\PSGit.ps1"
 
 
-function ConvertTo-PSModule(){
-    param(
-        [Parameter(mandatory=$true)][string]$source
-    )
-    if(!(Test-GitAuth -nobreak)){	
-        connect-github
-    }
-    if(Test-GitAuth){
-        $SourceFile=(Get-Item $source)
-        $ProjectPath=(Get-Item $source).Directory.FullName
-        $userData=get-gituserdata
+function ConvertTo-PSModule () {
+	param(
+		[Parameter(mandatory = $true)] [string]$source
+	)
+	if (!(Test-GitAuth -nobreak)) {
+		Connect-github
+	}
+	if (Test-GitAuth) {
+		$SourceFile = (Get-Item $source)
+		$ProjectPath = (Get-Item $source).Directory.FullName
+		$userData = get-gituserdata
 
-        #Write-Host "Test Local"
-        if (test-GitLocal -ProjectPath $ProjectPath) {
-		#Write-Host "Test remote"
-		    if (test-GitRemote -ProjectPath $ProjectPath) {
-                $RepoData=get-gitrepo -ProjectPath $ProjectPath
-                
-                #ModuleName
-                $ModuleName=$RepoData.name
+		#Write-Host "Test Local"
+		if (test-GitLocal -ProjectPath $ProjectPath) {
+			#Write-Host "Test remote"
+			if (test-GitRemote -ProjectPath $ProjectPath) {
+				$RepoData = Get-GitRepo -ProjectPath $ProjectPath
 
-                #ModuleAuthors
-                $authors=($RepoData.contributors_stats |Format-Table -autosize |Out-String)
-                
+				#ModuleName
+				$ModuleName = $RepoData.Name
 
-                #required modules
-                $requiredModules =@()
-                $FoundModules = get-PSTool_usedCommands $source
-                $Confirmation=[System.Windows.MessageBox]::Show("Please select modules used in your script from the following lists.The first list will be suspected valid modules.",'Select Modules','ok','Information')
-                $SelectedModules = $FoundModules.GoodCommands |Out-GridView -Title "Select Modules: Suspected Good" -passthru
-                $Confirmation=[System.Windows.MessageBox]::Show("Please select modules used in your script from the following lists.`nThe second list will be suspected false positives",'Select Modules','ok','Information')
-                $SelectedModules += $FoundModules.MehCommands |Out-GridView -Title "Select Modules: Suspected False Positives" -passthru
-                foreach($module in ($selectedModules|sort-object -Property Module|Get-Unique)){
-                    $RequiredModules+=@{ModuleName="$($module.Module)"
-                                        ModuleVersion="$($module.Version)" 
-                                        GUID="$((get-module $module.Module).guid)"}
-                }
-
-                #ModuleVersion
-                $UpdateDate=$($RepoData.updated_at).split("T")[0].split("-")
-                $UpdateTime=$($RepoData.updated_at).split("T")[1].split(":")
-                $ModuleVersion="$($UpdateDate[0])$($UpdateDate[1]).$($UpdateDate[2]).$($UpdateTime[0])$($UpdateTime[1]).$($UpdateTime[2].split(`"Z`")[0])"
-
-                #Function Separator
-                $functions = Get-PSTool_functions $source
-
-                # $fn=$functions[0]
-                foreach($fn in $functions){
-                       $fnTemp= [ordered]@{
-                       Private = [boolean]
-                       Synopsis=[String]
-                       Description=[String]
-                       Notes=[String]
-                       Example_A=[String]
-                       Example_B=[String]
-                       Example_C=[String]
-                       Example_D=[String]
-                    }
-                    foreach($parameter in ($fn.parameters.values -as [array])){
-                        $paramDescription="$($parameter.Name) "
-                        if($parameter.ParameterSets.Values.ismandatory){$paramDescription+= "is a mandatory parameter"}else{$paramDescription+= "is a parameter"}
-                        $paramDescription+= " of type $($parameter.ParameterType)"
-                        $fnTemp["Parameter_$($parameter.name)"]=$paramDescription
-                    }
-
-             }
+				#ModuleAuthors
+				$authors = ($RepoData.contributors_stats | Format-Table -AutoSize | Out-String)
 
 
-                
-                #make directory for module
-                New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module"
-                New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)"
-                New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\Private"
-                New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\Public"
-                New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\en-US"
+				#required modules
+				$requiredModules = @()
+				$FoundModules = get-PSTool_usedCommands $source
+				$Confirmation = [System.Windows.MessageBox]::Show("Please select modules used in your script from the following lists.The first list will be suspected valid modules.",'Select Modules','ok','Information')
+				$SelectedModules = $FoundModules.GoodCommands | Out-GridView -Title "Select Modules: Suspected Good" -PassThru
+				$Confirmation = [System.Windows.MessageBox]::Show("Please select modules used in your script from the following lists.`nThe second list will be suspected false positives",'Select Modules','ok','Information')
+				$SelectedModules += $FoundModules.MehCommands | Out-GridView -Title "Select Modules: Suspected False Positives" -PassThru
+				foreach ($module in ($selectedModules | Sort-Object -Property Module | Get-Unique)) {
+					$RequiredModules += @{ ModuleName = "$($module.Module)"
+						ModuleVersion = "$($module.Version)"
+						GUID = "$((get-module $module.Module).guid)" }
+				}
 
-                #Make Module Manifest
-                New-ModuleManifest -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\$($ModuleName).psd1" `
-                                   -RootModule $ModuleName.psm1 `
-                                   -Description $RepoData.Description `
-                                   -Author $authors `
-                                   -ModuleVersion $ModuleVersion `
-                                   -HelpInfoURI $RepoData.html_url `
-                                   -PowerShellVersion "$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)" `
-                                   -Copyright "(c) $($UpdateDate[0]) $($RepoData.owner.login). All rights reserved." `
-                                   -companyName "$($RepoData.owner.login)" `
-                                   -RequiredModules  $RequiredModules `
-                                   -FormatsToProcess "$($ModuleName).Format.ps1xml" 
-                                   
-               #
-             }
-        }                      
-    }
+				#ModuleVersion
+				$UpdateDate = $($RepoData.updated_at).split("T")[0].split("-")
+				$UpdateTime = $($RepoData.updated_at).split("T")[1].split(":")
+				$ModuleVersion = "$($UpdateDate[0])$($UpdateDate[1]).$($UpdateDate[2]).$($UpdateTime[0])$($UpdateTime[1]).$($UpdateTime[2].split(`"Z`")[0])"
+
+				#Function Separator
+				$functions = Get-PSTool_functions $source
+
+				# $fn=$functions[0]
+				foreach ($fn in $functions) {
+					$fnTemp = [ordered]@{
+						Private = [boolean]
+						Synopsis = [string]
+						Description = [string]
+						Notes = [string]
+						Example_A = [string]
+						Example_B = [string]
+						Example_C = [string]
+						Example_D = [string]
+					}
+					foreach ($parameter in ($fn.parameters.values -as [array])) {
+						$paramDescription = "$($parameter.Name) "
+						if ($parameter.ParameterSets.values.ismandatory) { $paramDescription += "is a mandatory parameter" } else { $paramDescription += "is a parameter" }
+						$paramDescription += " of type $($parameter.ParameterType)"
+						$fnTemp["Parameter_$($parameter.name)"] = $paramDescription
+					}
+
+				}
+
+
+
+				#make directory for module
+				New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module"
+				New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)"
+				New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\Private"
+				New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\Public"
+				New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\en-US"
+
+				#Make Module Manifest
+				New-ModuleManifest -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\$($ModuleName).psd1" `
+ 					-RootModule $ModuleName.psm1 `
+ 					-Description $RepoData.Description `
+ 					-Author $authors `
+ 					-ModuleVersion $ModuleVersion `
+ 					-HelpInfoUri $RepoData.html_url `
+ 					-PowerShellVersion "$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)" `
+ 					-Copyright "(c) $($UpdateDate[0]) $($RepoData.owner.login). All rights reserved." `
+ 					-CompanyName "$($RepoData.owner.login)" `
+ 					-RequiredModules $RequiredModules `
+ 					-FormatsToProcess "$($ModuleName).Format.ps1xml"
+
+				#
+			}
+		}
+	}
 }
 
 #private
-function get-psmodule(){}
+function get-psmodule () {}
 
 
 
