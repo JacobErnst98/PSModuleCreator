@@ -32,18 +32,19 @@ function ConvertTo-PSModule () {
 
 
 				#required modules
+				$availableModules = Get-Module -ListAvailable
 				$requiredModules = @()
 				$FoundModules = get-PSTool_usedCommands $source
 				$Confirmation = [System.Windows.MessageBox]::Show("Please select modules used in your script from the following lists.The first list will be suspected valid modules.",'Select Modules','ok','Information')
-				$SelectedModules = $FoundModules.GoodCommands | Out-GridView -Title "Select Modules: Suspected Good" -PassThru
+				$SelectedModules = $FoundModules.GoodCommands | Out-GridView -Title "Select Modules: Suspected Good, Press cancel for none" -PassThru
 				$Confirmation = [System.Windows.MessageBox]::Show("Please select modules used in your script from the following lists.`nThe second list will be suspected false positives",'Select Modules','ok','Information')
-				$SelectedModules += $FoundModules.MehCommands | Out-GridView -Title "Select Modules: Suspected False Positives" -PassThru
-				foreach ($module in ($selectedModules | Sort-Object -Property Module | Get-Unique)) {
-					$RequiredModules += @{ ModuleName = "$($module.Module)"
+				$SelectedModules += $FoundModules.MehCommands | Out-GridView -Title "Select Modules: Suspected False Positives, Press cancel for none" -PassThru
+				foreach ($module in $SelectedModules) {
+					$RequiredModules += [pscustomobject]@{ ModuleName = "$($module.Module)"
 						ModuleVersion = "$($module.Version)"
-						GUID = "$((get-module $module.Module).guid)" }
+						GUID = "$(($availableModules| where {$_.name -match $module.Module}).guid)" }
 				}
-
+				$RequiredModules = ($RequiredModules | Sort-Object -Property ModuleName | Get-Unique -AsString)
 				#ModuleVersion
 				$UpdateDate = $($RepoData.updated_at).split("T")[0].split("-")
 				$UpdateTime = $($RepoData.updated_at).split("T")[1].split(":")
@@ -51,10 +52,12 @@ function ConvertTo-PSModule () {
 
 				#Function Separator
 				$functions = Get-PSTool_functions $source
+				$functionDocumentation = @()
 
-				# $fn=$functions[0]
+				$fncount = 0
 				foreach ($fn in $functions) {
-					$fnTemp = [ordered]@{
+					$fncount++
+					$fnTemp = [pscustomobject]@{
 						Private = [boolean]
 						Synopsis = [string]
 						Description = [string]
@@ -65,13 +68,34 @@ function ConvertTo-PSModule () {
 						Example_D = [string]
 					}
 					foreach ($parameter in ($fn.parameters.values -as [array])) {
-						$paramDescription = "$($parameter.Name) "
-						if ($parameter.ParameterSets.values.ismandatory) { $paramDescription += "is a mandatory parameter" } else { $paramDescription += "is a parameter" }
-						$paramDescription += " of type $($parameter.ParameterType)"
-						$fnTemp["Parameter_$($parameter.name)"] = $paramDescription
+						if ($fn.ResolveParameter("$($parameter.name)").parametersets.values.position -ne -2147483648)
+						{
+							$paramDescription = "$($parameter.Name) "
+							if ($parameter.parametersets.values.ismandatory) { $paramDescription += "is a mandatory parameter" } else { $paramDescription += "is a parameter" }
+							$paramDescription += " of type $($parameter.ParameterType)"
+							Add-Member -InputObject $fnTemp -MemberType NoteProperty -Name "Parameter_$($parameter.name)" -Value $paramDescription
+						}
+					}
+					$fnOBJ = Show-Psgui -Object $fnTemp -Title "$($fn.Name) $($fncount)/$($functions.count)" -showbreak
+					if ($fnOBJ) {
+						Add-Member -InputObject $fnOBJ -MemberType NoteProperty -Name "Name" -Value ($fn.Name)
 					}
 
+
+					# $fnOBJ = New-Object PsObject
+					#     $fnTemp.psobject.properties | % {
+					#         $fnOBJ | Add-Member -MemberType $_.MemberType -Name $_.Name -Value $_.Value
+					#   }
+					if ($fnOBJ -eq "Cancel All") {
+						break
+					}
+					elseif ($fnOBJ)
+					{
+						$functionDocumentation += $fnOBJ
+					}
 				}
+
+
 
 
 
