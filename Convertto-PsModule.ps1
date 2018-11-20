@@ -31,7 +31,7 @@ function ConvertTo-PSModule () {
 				$authors = ($RepoData.contributors_stats | Format-Table -AutoSize | Out-String)
 
 
-				#required modules
+				#region required modules
 				$availableModules = Get-Module -ListAvailable
 				$requiredModules = @()
 				$FoundModules = get-PSTool_usedCommands $source
@@ -45,12 +45,15 @@ function ConvertTo-PSModule () {
 						GUID = "$(($availableModules| where {$_.name -match $module.Module}).guid)" }
 				}
 				$RequiredModules = ($RequiredModules | Sort-Object -Property ModuleName | Get-Unique -AsString)
-				#ModuleVersion
+				#endregion
+
+				#region ModuleVersion
 				$UpdateDate = $($RepoData.updated_at).split("T")[0].split("-")
 				$UpdateTime = $($RepoData.updated_at).split("T")[1].split(":")
 				$ModuleVersion = "$($UpdateDate[0])$($UpdateDate[1]).$($UpdateDate[2]).$($UpdateTime[0])$($UpdateTime[1]).$($UpdateTime[2].split(`"Z`")[0])"
+				#endregion
 
-				#Function Separator
+				#region Function Separator
 				$functions = Get-PSTool_functions $source
 				$functionDocumentation = @()
 
@@ -94,19 +97,17 @@ function ConvertTo-PSModule () {
 						$functionDocumentation += $fnOBJ
 					}
 				}
+				#endregion
 
-
-
-
-
-				#make directory for module
+				#region make directory for module
 				New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module"
 				New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)"
 				New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\Private"
 				New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\Public"
 				New-Item -ItemType directory -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\en-US"
+				#endregion
 
-				#Make Module Manifest
+				#region Make Module Manifest
 				New-ModuleManifest -Path "$($SourceFile.Directory.FullName)\Module\$($ModuleName)\$($ModuleName).psd1" `
  					-RootModule $ModuleName.psm1 `
  					-Description $RepoData.Description `
@@ -118,15 +119,12 @@ function ConvertTo-PSModule () {
  					-CompanyName "$($RepoData.owner.login)" `
  					-RequiredModules $RequiredModules `
  					-FormatsToProcess "$($ModuleName).Format.ps1xml"
-
-				#
+				#endregion
 			}
 		}
 	}
 }
 
-#private
-function get-psmodule () {}
 
 
 
